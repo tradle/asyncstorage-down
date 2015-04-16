@@ -152,7 +152,7 @@ AD.prototype._put = function (key, value, options, callback) {
 
   if (typeof value === 'object' && !Buffer.isBuffer(value) && value.buffer === undefined) {
     var obj = {};
-    obj.storetype = "json";
+    obj.storetype = 'json';
     obj.data = value;
     value = JSON.stringify(obj);
   }
@@ -185,7 +185,7 @@ AD.prototype._get = function (key, options, callback) {
 
 
     if (options.asBuffer === false) {
-      if (value.indexOf("{\"storetype\":\"json\",\"data\"") > -1) {
+      if (value.indexOf('{"storetype":"json","data"') > -1) {
         var res = JSON.parse(value);
         value = res.data;
       }
@@ -225,33 +225,31 @@ AD.prototype._batch = function (array, options, callback) {
       }
     }
 
-    if (Array.isArray(array) && array.length) {
-      for (var i = 0; i < array.length; i++) {
-        var task = array[i];
-        if (task) {
-          key = Buffer.isBuffer(task.key) ? task.key : String(task.key);
-          err = checkKeyValue(key, 'key');
+    if (!Array.isArray(array) || !array.length) callback()
+
+    for (var i = 0; i < array.length; i++) {
+      var task = array[i];
+      if (task) {
+        key = Buffer.isBuffer(task.key) ? task.key : String(task.key);
+        err = checkKeyValue(key, 'key');
+        if (err) {
+          overallErr = err;
+          checkDone();
+        } else if (task.type === 'del') {
+          self._del(task.key, options, checkDone);
+        } else if (task.type === 'put') {
+          value = Buffer.isBuffer(task.value) ? task.value : String(task.value);
+          err = checkKeyValue(value, 'value');
           if (err) {
             overallErr = err;
             checkDone();
-          } else if (task.type === 'del') {
-            self._del(task.key, options, checkDone);
-          } else if (task.type === 'put') {
-            value = Buffer.isBuffer(task.value) ? task.value : String(task.value);
-            err = checkKeyValue(value, 'value');
-            if (err) {
-              overallErr = err;
-              checkDone();
-            } else {
-              self._put(key, value, options, checkDone);
-            }
+          } else {
+            self._put(key, value, options, checkDone);
           }
-        } else {
-          checkDone();
         }
+      } else {
+        checkDone();
       }
-    } else {
-      callback();
     }
   });
 };
@@ -281,7 +279,7 @@ function checkKeyValue(obj, type) {
       return new Error(type + ' cannot be empty');
     }
   }
-  if (obj.toString().indexOf("[object ArrayBuffer]") === 0) {
+  if (obj.toString().indexOf('[object ArrayBuffer]') === 0) {
     if (obj.byteLength === 0 || obj.byteLength === undefined) {
       return new Error(type + ' cannot be an empty Buffer');
     }
