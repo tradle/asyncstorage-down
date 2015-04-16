@@ -56,16 +56,18 @@ db.readStream()
 
 _TODO: tests pass, but still need to setup env for automatic testing_
 
-##  Contributors
-
-Anton Whalley https://github.com/no9
-
-Adam Shih https://github.com/adamshih
-
-Nolan Lawson https://github.com/nolanlawson
+## Contributors
 
 Tradle, Inc. https://github.com/tradle
 
 Mark Vayngrib https://github.com/mvayngrib
 
 Ellen Katsnelson https://github.com/pgmemk
+
+## localstorage-down Contributors
+
+Anton Whalley https://github.com/no9
+
+Adam Shih https://github.com/adamshih
+
+Nolan Lawson https://github.com/nolanlawson
