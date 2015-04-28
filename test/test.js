@@ -1,5 +1,6 @@
 'use strict';
 
+require('react-helper')
 var asyncstorage = require('../');
 var tape   = require('tape');
 var testCommon = require('./testCommon');

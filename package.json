@@ -6,28 +6,23 @@
     "leveldown",
     "levelup",
     "AsyncStorage",
-    "React",
-    "React Native"
+    "ios",
+    "react",
+    "react-component",
+    "react-native"
   ],
   "version": "0.0.1",
   "main": "index.js",
   "dependencies": {
     "abstract-leveldown": "0.12.3",
     "argsarray": "0.0.1",
-    "buffer": "^3.1.2",
     "d64": "^1.0.0",
-    "events": "^1.0.2",
-    "fs": "0.0.2",
-    "path": "^0.11.14",
-    "process": "^0.10.1",
-    "react-native": "^0.3.11",
-    "stream": "0.0.2",
-    "tiny-queue": "0.2.0",
-    "util": "^0.10.3"
+    "tiny-queue": "0.2.0"
   },
   "devDependencies": {
     "jshint": "^2.5.0",
     "levelup": "^0.18.2",
+    "react-helper": "git://github.com/mvayngrib/react-helper",
     "tape": "^2.12.3"
   },
   "repository": {
