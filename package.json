@@ -9,7 +9,7 @@
     "React",
     "React Native"
   ],
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "index.js",
   "dependencies": {
     "abstract-leveldown": "0.12.3",
