@@ -6,8 +6,10 @@
     "leveldown",
     "levelup",
     "AsyncStorage",
-    "React",
-    "React Native"
+    "react",
+    "react-component",
+    "react-native",
+    "ios"
   ],
   "version": "0.0.2",
   "main": "index.js",
