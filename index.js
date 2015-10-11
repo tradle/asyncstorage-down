@@ -1,6 +1,6 @@
 'use strict';
 
-require('./platform');
+// require('./platform');
 var inherits = require('util').inherits;
 var AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN;
 var AbstractIterator = require('abstract-leveldown').AbstractIterator;
