@@ -4,6 +4,7 @@
 var inherits = require('util').inherits;
 var AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN;
 var AbstractIterator = require('abstract-leveldown').AbstractIterator;
+var dezalgo = require('dezalgo')
 
 var Storage = require('./asyncstorage').Storage;
 var StorageCore = require('./asyncstorage-core');
@@ -40,6 +41,7 @@ ADIterator.prototype._init = function (callback) {
 
 ADIterator.prototype._next = function (callback) {
   var self = this;
+  callback = dezalgo(callback)
 
   function onInitComplete() {
     if (self._pos === self._keys.length || self._pos < 0) { // done reading
