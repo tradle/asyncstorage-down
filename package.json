@@ -17,7 +17,6 @@
     "abstract-leveldown": "0.12.3",
     "argsarray": "0.0.1",
     "d64": "^1.0.0",
-    "dezalgo": "^1.0.3",
     "tiny-queue": "0.2.0"
   },
   "peerDependencies": {
