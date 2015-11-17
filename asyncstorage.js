@@ -45,20 +45,29 @@ Storage.prototype.keys = function (callback) {
   });
 };
 
-//setItem: Saves and item at the key provided.
-Storage.prototype.setItem = function (key, value, callback) {
+Storage.prototype.setItems = function (pairs, callback) {
   var self = this;
   self.sequentialize(callback, function (callback) {
-    if (Buffer.isBuffer(value)) {
-      value = bufferPrefix + d64.encode(value);
-    }
+    pairs.forEach((pair) => {
+      var value = pair[1]
+      if (Buffer.isBuffer(value)) {
+        pair[1] = bufferPrefix + d64.encode(value);
+      }
 
-    var idx = utils.sortedIndexOf(self._keys, key);
-    if (self._keys[idx] !== key) {
-      self._keys.splice(idx, 0, key);
-    }
-    self._store.put(key, value, callback);
+      var key = pair[0]
+      var idx = utils.sortedIndexOf(self._keys, key);
+      if (self._keys[idx] !== key) {
+        self._keys.splice(idx, 0, key);
+      }
+    })
+
+    self._store.multiPut(pairs, callback);
   });
+}
+
+//setItem: Saves and item at the key provided.
+Storage.prototype.setItem = function (key, value, callback) {
+  return this.setItems([[key, value]], callback)
 };
 
 //getItem: Returns the item identified by it's key.
@@ -98,22 +107,23 @@ Storage.prototype.getItem = function (key, callback) {
 };
 
 //removeItem: Removes the item identified by it's key.
-Storage.prototype.removeItem = function (key, callback) {
+Storage.prototype.removeItems = function (keys, callback) {
   var self = this;
   self.sequentialize(callback, function (callback) {
-    var idx = utils.sortedIndexOf(self._keys, key);
-    if (self._keys[idx] === key) {
-      self._keys.splice(idx, 1);
-      self._store.remove(key, function (err) {
-        if (err) {
-          return callback(err);
-        }
-        callback();
-      });
-    } else {
-      callback();
-    }
+    keys.forEach((key) => {
+      var idx = utils.sortedIndexOf(self._keys, key);
+      if (self._keys[idx] === key) {
+        self._keys.splice(idx, 1);
+      }
+    })
+
+    self._store.multiRemove(keys, callback);
   });
+};
+
+//removeItem: Removes the item identified by it's key.
+Storage.prototype.removeItem = function (key, callback) {
+  return this.removeItems([key], callback)
 };
 
 Storage.prototype.length = function (callback) {

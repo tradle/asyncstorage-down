@@ -42,6 +42,15 @@ AsyncStorageCore.prototype.put = function (key, value, callback) {
   AsyncStorage.setItem(key, value, callback);
 };
 
+AsyncStorageCore.prototype.multiPut = function (pairs, callback) {
+  var self = this
+  pairs.forEach((pair) => {
+    pair[0] = prepKey(pair[0], self);
+  })
+
+  AsyncStorage.multiSet(pairs, callback);
+};
+
 AsyncStorageCore.prototype.get = function (key, callback) {
   key = prepKey(key, this);
   AsyncStorage.getItem(key, callback);
@@ -50,6 +59,11 @@ AsyncStorageCore.prototype.get = function (key, callback) {
 AsyncStorageCore.prototype.remove = function (key, callback) {
   key = prepKey(key, this);
   AsyncStorage.removeItem(key, callback);
+};
+
+AsyncStorageCore.prototype.multiRemove = function (keys, callback) {
+  keys = keys.map((key) => prepKey(key, this))
+  AsyncStorage.multiRemove(keys, callback);
 };
 
 AsyncStorageCore.destroy = function (dbname, callback) {
