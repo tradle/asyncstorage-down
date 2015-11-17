@@ -1,7 +1,8 @@
 'use strict';
 
 var levelup = require('levelup');
-  
+var Storage = require('../asyncstorage').Storage
+
 module.exports.setUp = function (leveldown, test, testCommon) {
   test('setUp common', testCommon.setUp);
   test('setUp db', function (t) {
@@ -186,6 +187,46 @@ module.exports.all = function (leveldown, tape, testCommon) {
           t.end();
         });
       });
+    });
+  });
+
+  tape('bypasses getItem for keys-only db streams', function (t) {
+    var origGetItem = Storage.prototype.getItem;
+    Storage.prototype.getItem = function () {
+      throw new Error('shouldn\'t get called for keys-only db streams');
+    };
+
+    var db = levelup('ooga', { db: leveldown });
+    var batch = [
+      {
+        key:'a',
+        value: '1',
+        type: 'put'
+      },
+      {
+        key:'b',
+        value: '2',
+        type: 'put'
+      },
+      {
+        key:'c',
+        value: '3',
+        type: 'put'
+      },
+    ];
+
+    db.batch(batch, function () {
+      db.createKeyStream({
+          start: 'c'
+        })
+        .on('data', function (key) {
+          t.equals(key, 'c');
+        })
+        .on('closed', function () {
+          // unhack getItem
+          Storage.prototype.getItem = origGetItem;
+          t.end();
+        });
     });
   });
 };

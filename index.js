@@ -25,6 +25,7 @@ function ADIterator(db, options) {
   this._lte     = options.lte;
   this._exclusiveStart = options.exclusiveStart;
   this._limit = options.limit;
+  this._keysOnly = options.values === false
   this._count = 0;
 
   this.onInitCompleteListeners = [];
@@ -65,6 +66,8 @@ ADIterator.prototype._next = function (callback) {
     }
 
     self._pos += self._reverse ? -1 : 1;
+    if (self._keysOnly) return callback(null, key)
+
     self.db.container.getItem(key, function (err, value) {
       if (err) {
         if (err.message === 'NotFound') {
