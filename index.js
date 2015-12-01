@@ -34,7 +34,9 @@ function ADIterator(db, options) {
 inherits(ADIterator, AbstractIterator);
 
 ADIterator.prototype._init = function (callback) {
-  nextTick(callback)
+  nextTick(function () {
+    callback();
+  });
 };
 
 ADIterator.prototype._next = function (callback) {
@@ -134,50 +136,47 @@ AD.prototype._open = function (options, callback) {
   this.container.init(callback);
 };
 
-AD.prototype._multiPut = function (pairs, options, callback) {
-  var normalized = []
-  var err
-  pairs.every(([key, value]) => {
-    err = checkKeyValue(key, 'key');
-    if (err) return
-
-    err = checkKeyValue(value, 'value');
-
-    if (err) return
-
-    if (typeof value === 'object' && !Buffer.isBuffer(value) && value.buffer === undefined) {
-      var obj = {};
-      obj.storetype = 'json';
-      obj.data = value;
-      value = JSON.stringify(obj);
-    }
-
-    normalized.push([key, value])
-    return true
-  })
-
-  if (err) {
-    nextTick(() => callback(err))
-  } else {
-    this.container.setItems(normalized, callback)
-  }
-}
-
 AD.prototype._put = function (key, value, options, callback) {
-  return this._multiPut([[key, value]], options, callback)
-};
 
-AD.prototype._get = function (key, options, callback) {
   var err = checkKeyValue(key, 'key');
 
   if (err) {
-    return nextTick(() => callback(err));
+    return nextTick(function () {
+      callback(err);
+    });
+  }
+
+  err = checkKeyValue(value, 'value');
+
+  if (err) {
+    return nextTick(function () {
+      callback(err);
+    });
+  }
+
+  if (typeof value === 'object' && !Buffer.isBuffer(value) && value.buffer === undefined) {
+    var obj = {};
+    obj.storetype = 'json';
+    obj.data = value;
+    value = JSON.stringify(obj);
+  }
+
+  this.container.setItem(key, value, callback);
+};
+
+AD.prototype._get = function (key, options, callback) {
+
+  var err = checkKeyValue(key, 'key');
+
+  if (err) {
+    return nextTick(function () {
+      callback(err);
+    });
   }
 
   if (!Buffer.isBuffer(key)) {
     key = String(key);
   }
-
   this.container.getItem(key, function (err, value) {
 
     if (err) {
@@ -199,30 +198,20 @@ AD.prototype._get = function (key, options, callback) {
   });
 };
 
-AD.prototype._multiDel = function (keys, options, callback) {
-  var normalized = []
-  var err
-  keys.every((key) => {
-    err = checkKeyValue(key, 'key');
-    if (err) return
+AD.prototype._del = function (key, options, callback) {
 
-    if (!Buffer.isBuffer(key)) {
-      key = String(key);
-    }
-
-    normalized.push(key)
-    return true
-  })
+  var err = checkKeyValue(key, 'key');
 
   if (err) {
-    nextTick(() => callback(err))
-  } else {
-    this.container.removeItems(keys, callback)
+    return nextTick(function () {
+      callback(err);
+    });
   }
-}
+  if (!Buffer.isBuffer(key)) {
+    key = String(key);
+  }
 
-AD.prototype._del = function (key, options, callback) {
-  return this._multiDel([key], options, callback)
+  this.container.removeItem(key, callback);
 };
 
 AD.prototype._batch = function (array, options, callback) {
@@ -234,58 +223,36 @@ AD.prototype._batch = function (array, options, callback) {
 
     var numDone = 0;
     var overallErr;
-    if (!Array.isArray(array) || !array.length) return callback()
-
-    var toPut = []
-    var toDel = []
-    var deleted = {}
-
-    for (var i = 0; i < array.length; i++) {
-      var task = array[i];
-      if (!task) continue
-
-      key = Buffer.isBuffer(task.key) ? task.key : String(task.key);
-      err = checkKeyValue(key, 'key');
-      if (err) return callback(err)
-
-      if (task.type === 'del') {
-        deleted[task.key] = true
-        toDel.push(task.key)
-      } else if (task.type === 'put') {
-        value = Buffer.isBuffer(task.value) ? task.value : String(task.value);
-        err = checkKeyValue(value, 'value');
-        if (err) {
-          return callback(err);
-        } else {
-          toPut.push([key, value])
-        }
+    function checkDone() {
+      if (++numDone === array.length) {
+        callback(overallErr);
       }
     }
 
-    var togo = 0
-    if (toDel.length) {
-      togo++
-      self._multiDel(toDel, null, checkDone)
-    }
+    if (!Array.isArray(array) || !array.length) callback()
 
-    if (toPut.length) {
-      toPut = toPut.filter(([key, val]) => !(key in deleted))
-    }
-
-    if (toPut.length) {
-      togo++
-      self._multiPut(toPut, null, checkDone)
-    }
-
-    togo++
-    checkDone() // kick things off
-
-    function checkDone (err) {
-      if (err) {
-        togo = 0
-        callback(err)
-      } else if (--togo === 0) {
-        callback()
+    for (var i = 0; i < array.length; i++) {
+      var task = array[i];
+      if (task) {
+        key = Buffer.isBuffer(task.key) ? task.key : String(task.key);
+        err = checkKeyValue(key, 'key');
+        if (err) {
+          overallErr = err;
+          checkDone();
+        } else if (task.type === 'del') {
+          self._del(task.key, options, checkDone);
+        } else if (task.type === 'put') {
+          value = Buffer.isBuffer(task.value) ? task.value : String(task.value);
+          err = checkKeyValue(value, 'value');
+          if (err) {
+            overallErr = err;
+            checkDone();
+          } else {
+            self._put(key, value, options, checkDone);
+          }
+        }
+      } else {
+        checkDone();
       }
     }
   });
