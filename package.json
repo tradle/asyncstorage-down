@@ -19,9 +19,6 @@
     "d64": "^1.0.0",
     "tiny-queue": "0.2.0"
   },
-  "peerDependencies": {
-    "react-native": ">=0.4.1 <1.0.0 || 0.5.0-rc || 0.6.0-rc || 0.7.0-rc || 0.8.0-rc || 0.10.0-rc || 0.11.0-rc || 0.12.0-rc"
-  },
   "devDependencies": {
     "levelup": "^0.18.2",
     "tape": "^2.12.3"
