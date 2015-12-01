@@ -303,12 +303,18 @@ function asyncify (fn) {
     return fn
   }
 
+  var sync = true
+  nextTick(() => sync = false)
   var ret = function () {
     var ctx = this
     var args = arguments
-    nextTick(function () {
+    if (sync) {
+      nextTick(function () {
+        fn.apply(ctx, args)
+      })
+    } else {
       fn.apply(ctx, args)
-    })
+    }
   }
 
   ret._isAsync = true
