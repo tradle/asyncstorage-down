@@ -110,7 +110,7 @@ ADIterator.prototype._next = function (callback) {
 
         self.initCompleted = true;
         var i = -1;
-        while (++i < self.onInitCompleteListeners) {
+        while (++i < self.onInitCompleteListeners.length) {
           nextTick(self.onInitCompleteListeners[i]);
         }
       });
