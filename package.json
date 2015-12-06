@@ -11,7 +11,7 @@
     "react-native",
     "ios"
   ],
-  "version": "2.2.1",
+  "version": "2.3.0",
   "main": "index.js",
   "dependencies": {
     "abstract-leveldown": "0.12.3",
