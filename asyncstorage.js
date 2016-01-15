@@ -72,39 +72,61 @@ Storage.prototype.setItem = function (key, value, callback) {
 
 //getItem: Returns the item identified by it's key.
 Storage.prototype.getItem = function (key, callback) {
-  var self = this;
-  self.sequentialize(callback, function (callback) {
-    self._store.get(key, function (err, retval) {
-      if (err) {
-        return callback(err);
-      }
-      if (typeof retval === 'undefined' || retval === null) {
-        // 'NotFound' error, consistent with LevelDOWN API
-        return callback(new Error('NotFound'));
-      }
-      if (typeof retval !== 'undefined') {
-        if (bufferRegex.test(retval)) {
-          retval = d64.decode(retval.substring(bufferPrefix.length));
-        } else if (arrayBuffRegex.test(retval)) {
-          // this type is kept for backwards
-          // compatibility with older databases, but may be removed
-          // after a major version bump
-          retval = retval.substring(arrayBuffPrefix.length);
-          retval = new ArrayBuffer(atob(retval).split('').map(function (c) {
-            return c.charCodeAt(0);
-          }));
-        } else if (uintRegex.test(retval)) {
-          // ditto
-          retval = retval.substring(uintPrefix.length);
-          retval = new Uint8Array(atob(retval).split('').map(function (c) {
-            return c.charCodeAt(0);
-          }));
-        }
-      }
-      callback(null, retval);
-    });
-  });
+  return this.getItems([key], function (errs, values) {
+    if (errs && errs[0]) callback(errs[0])
+    else callback(null, values[0])
+  })
 };
+
+Storage.prototype.getItems = function (keys, callback) {
+  var self = this
+  self.sequentialize(callback, function (callback) {
+    self._store.multiGet(keys, function (errs, values) {
+      errs = errs || []
+      values = values || []
+      for (var i = 0; i < keys.length; i++) {
+        if (errs[i]) {
+          values[i] = undefined
+          continue
+        }
+
+        var retval = values[i]
+        if (typeof retval === 'undefined' || retval === null) {
+          // 'NotFound' error, consistent with LevelDOWN API
+          // yucky side-effect
+          errs[i] = new Error('NotFound')
+          values[i] = undefined
+          continue
+        }
+
+        errs[i] = null
+        if (typeof retval !== 'undefined') {
+          if (bufferRegex.test(retval)) {
+            retval = d64.decode(retval.substring(bufferPrefix.length));
+          } else if (arrayBuffRegex.test(retval)) {
+            // this type is kept for backwards
+            // compatibility with older databases, but may be removed
+            // after a major version bump
+            retval = retval.substring(arrayBuffPrefix.length);
+            retval = new ArrayBuffer(atob(retval).split('').map(function (c) {
+              return c.charCodeAt(0);
+            }));
+          } else if (uintRegex.test(retval)) {
+            // ditto
+            retval = retval.substring(uintPrefix.length);
+            retval = new Uint8Array(atob(retval).split('').map(function (c) {
+              return c.charCodeAt(0);
+            }));
+          }
+        }
+
+        values[i] = retval
+      }
+
+      callback(errs, values)
+    })
+  })
+}
 
 //removeItem: Removes the item identified by it's key.
 Storage.prototype.removeItems = function (keys, callback) {

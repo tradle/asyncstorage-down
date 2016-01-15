@@ -5,6 +5,7 @@ var tape   = require('tape');
 var testCommon = require('./testCommon');
 var testBuffer = new Buffer('hello');
 
+console.time('TESTS')
 require('abstract-leveldown/abstract/leveldown-test').args(asyncstorage, tape);
 require('abstract-leveldown/abstract/open-test').args(asyncstorage, tape, testCommon);
 require('abstract-leveldown/abstract/del-test').all(asyncstorage, tape, testCommon);

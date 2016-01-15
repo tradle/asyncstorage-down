@@ -11,6 +11,7 @@ var utils = require('./utils');
 
 // see http://stackoverflow.com/a/15349865/680742
 var nextTick = global.setImmediate || process.nextTick;
+var batchSize = 20
 
 function ADIterator(db, options) {
 
@@ -27,6 +28,7 @@ function ADIterator(db, options) {
   this._limit = options.limit;
   this._keysOnly = options.values === false
   this._count = 0;
+  this._cache = []
 
   this.onInitCompleteListeners = [];
 }
@@ -41,82 +43,124 @@ ADIterator.prototype._next = function (callback) {
   var self = this;
   callback = asyncify(callback)
 
-  function onInitComplete() {
-    if (self._pos === self._keys.length || self._pos < 0) { // done reading
-      return callback();
+  if (self.initStarted) {
+    if (self.initCompleted) {
+      onInitComplete();
+    } else {
+      self.onInitCompleteListeners.push(onInitComplete);
     }
 
-    var key = self._keys[self._pos];
-
-    if (!!self._endkey && (self._reverse ? key < self._endkey : key > self._endkey)) {
-      return callback();
-    }
-
-    if (!!self._limit && self._limit > 0 && self._count++ >= self._limit) {
-      return callback();
-    }
-
-    if ((self._lt  && key >= self._lt) ||
-      (self._lte && key > self._lte) ||
-      (self._gt  && key <= self._gt) ||
-      (self._gte && key < self._gte)) {
-      return callback();
-    }
-
-    self._pos += self._reverse ? -1 : 1;
-    if (self._keysOnly) return callback(null, key)
-
-    self.db.container.getItem(key, function (err, value) {
-      if (err) {
-        if (err.message === 'NotFound') {
-          return nextTick(function () {
-            self._next(callback);
-          });
-        }
-        return callback(err);
-      }
-      callback(null, key, value);
-    });
+    return
   }
-  if (!self.initStarted) {
-    self.initStarted = true;
-    self._init(function (err) {
+
+  self.initStarted = true;
+  self._init(function (err) {
+    if (err) {
+      return callback(err);
+    }
+    self.db.container.keys(function (err, keys) {
       if (err) {
         return callback(err);
       }
-      self.db.container.keys(function (err, keys) {
-        if (err) {
-          return callback(err);
-        }
-        self._keys = keys;
-        if (self._startkey) {
-          var index = utils.sortedIndexOf(self._keys, self._startkey);
-          var startkey = (index >= self._keys.length || index < 0) ?
-            undefined : self._keys[index];
-          self._pos = index;
-          if (self._reverse) {
-            if (self._exclusiveStart || startkey !== self._startkey) {
-              self._pos--;
-            }
-          } else if (self._exclusiveStart && startkey === self._startkey) {
-            self._pos++;
-          }
-        } else {
-          self._pos = self._reverse ? self._keys.length - 1 : 0;
-        }
-        onInitComplete();
 
-        self.initCompleted = true;
-        var i = -1;
-        while (++i < self.onInitCompleteListeners.length) {
-          nextTick(self.onInitCompleteListeners[i]);
+      self._keys = keys;
+      if (self._startkey) {
+        var index = utils.sortedIndexOf(self._keys, self._startkey);
+        var startkey = (index >= self._keys.length || index < 0)
+          ? undefined
+          : self._keys[index];
+
+        self._pos = index;
+        if (self._reverse) {
+          if (self._exclusiveStart || startkey !== self._startkey) {
+            self._pos--;
+          }
+        } else if (self._exclusiveStart && startkey === self._startkey) {
+          self._pos++;
         }
-      });
+      } else {
+        self._pos = self._reverse ? self._keys.length - 1 : 0;
+      }
+
+      onInitComplete();
+
+      self.initCompleted = true;
+      var i = -1;
+      while (++i < self.onInitCompleteListeners.length) {
+        nextTick(self.onInitCompleteListeners[i]);
+      }
     });
-  } else if (!self.initCompleted) {
-    self.onInitCompleteListeners.push(onInitComplete);
-  } else {
-    onInitComplete();
+  });
+
+  function onInitComplete() {
+    if (self._cache.length) {
+      var cached = self._cache.shift()
+      if (self._keysOnly) {
+        return callback(null, cached)
+      }
+
+      if (cached.error) {
+        if (cached.error.message == 'NotFound') {
+          return nextTick(function () {
+            self._next(callback)
+          })
+        } else {
+          return callback(cached.error)
+        }
+      }
+
+      callback(null, cached.key, cached.value)
+      return
+    }
+
+    var batch = []
+    for (var i = 0; i < batchSize; i++) {
+      if (self._pos === self._keys.length || self._pos < 0) { // done reading
+        break;
+      }
+
+      var key = self._keys[self._pos];
+
+      if (!!self._endkey && (self._reverse ? key < self._endkey : key > self._endkey)) {
+        break;
+      }
+
+      if (!!self._limit && self._limit > 0 && self._count++ >= self._limit) {
+        break;
+      }
+
+      if ((self._lt  && key >= self._lt) ||
+        (self._lte && key > self._lte) ||
+        (self._gt  && key <= self._gt) ||
+        (self._gte && key < self._gte)) {
+        break;
+      }
+
+      self._pos += self._reverse ? -1 : 1;
+      batch.push(key)
+    }
+
+    if (!batch.length) {
+      self._cache = null
+      return callback()
+    }
+
+    if (self._keysOnly) {
+      self._cache = batch
+      return onInitComplete()
+    }
+
+    self.db.container.getItems(batch, function (errs, values) {
+      self._cache = values.map(function (v, idx) {
+        return {
+          key: batch[idx],
+          value: v,
+          error: errs[idx]
+        }
+      })
+
+      onInitComplete()
+    });
   }
 };
 

@@ -222,10 +222,11 @@ module.exports.all = function (leveldown, tape, testCommon) {
         .on('data', function (key) {
           t.equals(key, 'c');
         })
-        .on('closed', function () {
+        .on('end', function () {
           // unhack getItem
           Storage.prototype.getItem = origGetItem;
           t.end();
+          console.timeEnd('TESTS')
         });
     });
   });
