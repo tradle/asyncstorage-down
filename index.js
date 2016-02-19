@@ -2,8 +2,9 @@
 
 // require('./platform');
 var inherits = require('util').inherits;
-var AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN;
-var AbstractIterator = require('abstract-leveldown').AbstractIterator;
+var ALD = require('abstract-leveldown');
+var AbstractLevelDOWN = ALD.AbstractLevelDOWN;
+var AbstractIterator = ALD.AbstractIterator;
 
 var Storage = require('./asyncstorage').Storage;
 var StorageCore = require('./asyncstorage-core');

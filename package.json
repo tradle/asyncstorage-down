@@ -14,7 +14,7 @@
   "version": "2.4.0",
   "main": "index.js",
   "dependencies": {
-    "abstract-leveldown": "0.12.3",
+    "abstract-leveldown": "2.4.1",
     "argsarray": "0.0.1",
     "d64": "^1.0.0",
     "tiny-queue": "0.2.0"
