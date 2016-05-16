@@ -226,7 +226,6 @@ module.exports.all = function (leveldown, tape, testCommon) {
           // unhack getItem
           Storage.prototype.getItem = origGetItem;
           t.end();
-          console.timeEnd('TESTS')
         });
     });
   });
