@@ -141,7 +141,7 @@ ADIterator.prototype._next = function (callback) {
     }
 
     if (!batch.length) {
-      self._cache = null
+      self._cache = []
       return callback()
     }
 

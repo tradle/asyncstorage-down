@@ -1,20 +1,9 @@
 'use strict';
 
-// ArrayBuffer/Uint8Array are old formats that date back to before we
-// had a proper browserified buffer type. they may be removed later
-var arrayBuffPrefix = 'ArrayBuffer:';
-var arrayBuffRegex = new RegExp('^' + arrayBuffPrefix);
-var uintPrefix = 'Uint8Array:';
-var uintRegex = new RegExp('^' + uintPrefix);
-
 // this is the new encoding format used going forward
-var bufferPrefix = 'Buff:';
-var bufferRegex = new RegExp('^' + bufferPrefix);
-
 var utils = require('./utils');
 var StorageCore = require('./asyncstorage-core');
 var TaskQueue = require('./taskqueue');
-var d64 = require('d64');
 
 function Storage(dbname) {
   this._store = new StorageCore(dbname);
@@ -41,25 +30,21 @@ Storage.prototype.init = function (callback) {
 Storage.prototype.keys = function (callback) {
   var self = this;
   self.sequentialize(callback, function (callback) {
-    callback(null, self._keys.slice());
+    callback(null, utils.decode(self._keys));
   });
 };
 
 Storage.prototype.setItems = function (pairs, callback) {
   var self = this;
+  pairs = pairs.map(utils.encode)
   self.sequentialize(callback, function (callback) {
-    pairs.forEach((pair) => {
-      var value = pair[1]
-      if (Buffer.isBuffer(value)) {
-        pair[1] = bufferPrefix + d64.encode(value);
-      }
-
-      var key = pair[0]
+    for (var i = 0 ; i < pairs.length; i++) {
+      var key = pairs[i][0]
       var idx = utils.sortedIndexOf(self._keys, key);
       if (self._keys[idx] !== key) {
         self._keys.splice(idx, 0, key);
       }
-    })
+    }
 
     self._store.multiPut(pairs, callback);
   });
@@ -81,7 +66,7 @@ Storage.prototype.getItem = function (key, callback) {
 Storage.prototype.getItems = function (keys, callback) {
   var self = this
   self.sequentialize(callback, function (callback) {
-    self._store.multiGet(keys, function (errs, values) {
+    self._store.multiGet(utils.encode(keys), function (errs, values) {
       errs = errs || []
       values = values || []
       for (var i = 0; i < keys.length; i++) {
@@ -101,23 +86,7 @@ Storage.prototype.getItems = function (keys, callback) {
 
         errs[i] = null
         if (typeof retval !== 'undefined') {
-          if (bufferRegex.test(retval)) {
-            retval = d64.decode(retval.substring(bufferPrefix.length));
-          } else if (arrayBuffRegex.test(retval)) {
-            // this type is kept for backwards
-            // compatibility with older databases, but may be removed
-            // after a major version bump
-            retval = retval.substring(arrayBuffPrefix.length);
-            retval = new ArrayBuffer(atob(retval).split('').map(function (c) {
-              return c.charCodeAt(0);
-            }));
-          } else if (uintRegex.test(retval)) {
-            // ditto
-            retval = retval.substring(uintPrefix.length);
-            retval = new Uint8Array(atob(retval).split('').map(function (c) {
-              return c.charCodeAt(0);
-            }));
-          }
+          retval = utils.decode(retval)
         }
 
         values[i] = retval
@@ -131,6 +100,7 @@ Storage.prototype.getItems = function (keys, callback) {
 //removeItem: Removes the item identified by it's key.
 Storage.prototype.removeItems = function (keys, callback) {
   var self = this;
+  keys = utils.encode(keys)
   self.sequentialize(callback, function (callback) {
     keys.forEach((key) => {
       var idx = utils.sortedIndexOf(self._keys, key);
