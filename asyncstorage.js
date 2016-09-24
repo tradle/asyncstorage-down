@@ -65,35 +65,56 @@ Storage.prototype.getItem = function (key, callback) {
 
 Storage.prototype.getItems = function (keys, callback) {
   var self = this
+  var myKeys = this._keys
   self.sequentialize(callback, function (callback) {
-    self._store.multiGet(utils.encode(keys), function (errs, values) {
+    var allErrs = new Array(keys.length)
+    var allValues = new Array(keys.length)
+    var encoded = utils.encode(keys)
+    var lookup = []
+    for (var i = 0; i < encoded.length; i++) {
+      var key = encoded[i]
+      if (myKeys.indexOf(key) === -1) {
+        allErrs[i] = new Error('NotFound')
+      } else {
+        allErrs[i] = undefined
+        lookup.push(key)
+      }
+
+      allValues[i] = undefined
+    }
+
+    if (!lookup.length) return callback(allErrs, allValues)
+
+    self._store.multiGet(lookup, merge)
+
+    function merge (errs, values) {
       errs = errs || []
       values = values || []
+      var retIdx = -1
       for (var i = 0; i < keys.length; i++) {
-        if (errs[i]) {
-          values[i] = undefined
-          continue
-        }
+        if (allErrs[i]) continue
 
-        var retval = values[i]
+        retIdx++
+        if (errs[retIdx]) continue
+
+        var retval = values[retIdx]
         if (typeof retval === 'undefined' || retval === null) {
           // 'NotFound' error, consistent with LevelDOWN API
           // yucky side-effect
-          errs[i] = new Error('NotFound')
-          values[i] = undefined
+          allErrs[i] = new Error('NotFound')
           continue
         }
 
-        errs[i] = null
+        allErrs[i] = null
         if (typeof retval !== 'undefined') {
           retval = utils.decode(retval)
         }
 
-        values[i] = retval
+        allValues[i] = retval
       }
 
-      callback(errs, values)
-    })
+      callback(allErrs, allValues)
+    }
   })
 }
 
