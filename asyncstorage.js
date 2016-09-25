@@ -73,7 +73,8 @@ Storage.prototype.getItems = function (keys, callback) {
     var lookup = []
     for (var i = 0; i < encoded.length; i++) {
       var key = encoded[i]
-      if (myKeys.indexOf(key) === -1) {
+      var idx = utils.sortedIndexOf(myKeys, key)
+      if (myKeys[idx] !== key) {
         allErrs[i] = new Error('NotFound')
       } else {
         allErrs[i] = undefined
