@@ -25,7 +25,7 @@ npm install levelup
 
 Create a file called index.js and enter the following:
 
-```
+```js
 var asyncstorage = require('asyncstorage-down');
 var levelup = require('levelup');
 var db = levelup('/does/not/matter', { db: asyncstorage });
