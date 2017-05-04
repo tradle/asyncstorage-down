@@ -23,7 +23,7 @@
     "asyncstorage-mock-another": "^1.0.1",
     "react-native": "file:./mock-react-native",
     "levelup": "^0.18.2",
-    "tape": "^2.12.3"
+    "tape": "^4.6.3"
   },
   "repository": {
     "type": "git",
