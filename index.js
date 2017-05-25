@@ -14,6 +14,30 @@ var ltgt = require('ltgt');
 var nextTick = global.setImmediate || process.nextTick;
 var batchSize = 20
 
+function keyEq(k1, k2) {
+  return (k1 || '').toString('hex') === (k2 || '').toString('hex');
+}
+
+function keyNeq(k1, k2) {
+  return (k1 || '').toString('hex') !== (k2 || '').toString('hex');
+}
+
+function keyGt(k1, k2) {
+  return (k1 || '').toString('hex') > (k2 || '').toString('hex');
+}
+
+function keyGte(k1, k2) {
+  return (k1 || '').toString('hex') >= (k2 || '').toString('hex');
+}
+
+function keyLt(k1, k2) {
+  return (k1 || '').toString('hex') < (k2 || '').toString('hex');
+}
+
+function keyLte(k1, k2) {
+  return (k1 || '').toString('hex') <= (k2 || '').toString('hex');
+}
+
 function ADIterator(db, options) {
 
   AbstractIterator.call(this, db);
@@ -27,7 +51,6 @@ function ADIterator(db, options) {
   this._lte     = options.lte;
   this._keyAsBuffer = options.keyAsBuffer;
   this._valueAsBuffer = options.valueAsBuffer;
-  this._exclusiveStart = options.exclusiveStart;
   this._limit = options.limit;
   this._keysOnly = options.values === false
   this._count = 0;
@@ -44,33 +67,61 @@ function ADIterator(db, options) {
     }
 
     self._keys = keys;
-    if (!self._reverse) {
-      self._startkey = ltgt.lowerBound(options)
-      self._endkey = ltgt.upperBound(options)
-    } else {
-      self._startkey = ltgt.upperBound(options)
-      self._endkey = ltgt.lowerBound(options)
-    }
-    if (self._startkey) {
-      var index = utils.sortedIndexOf(self._keys, self._startkey);
-      var startkey = (index >= self._keys.length || index < 0)
-        ? undefined
-        : self._keys[index];
 
-      self._pos = index;
-      if (self._reverse) {
-        if (self._lt && startkey === self._lt) {
-          self._pos--;
-        } else if (self._exclusiveStart || startkey !== self._startkey) {
-          self._pos--;
-        }
-      } else if (self._gt && startkey === self._gt) {
-        self._pos++;
-      } else if (self._exclusiveStart && startkey === self._startkey) {
-        self.pos++;
-      }
+    if (keys.length === 0) {
+      self._pos = 0;
     } else {
-      self._pos = self._reverse ? self._keys.length - 1 : 0;
+      if (!self._reverse) {
+        self._startkey = ltgt.lowerBound(options)
+        self._endkey = ltgt.upperBound(options)
+      } else {
+        self._startkey = ltgt.upperBound(options)
+        self._endkey = ltgt.lowerBound(options)
+      }
+
+      if (self._startkey) {
+        self._pos = utils.sortedIndexOf(self._keys, self._startkey);
+        if (self._reverse) {
+          if (self._pos === self._keys.length) {
+            self._pos--;
+          }
+          else if (self._lt && keyGte(self._keys[self._pos], self._lt)) {
+            self._pos--;
+          }
+          else if (self._lte && keyGt(self._keys[self._pos], self._lte)) {
+            self._pos--;
+          }
+          else if (!self._lt && keyGt(self._keys[self._pos], self._startkey)) {
+            self._pos--;
+          }
+        }
+        else {
+          if (self._pos < 0) {
+            self._pos = 0;
+          }
+          else if (self._gt && keyLte(self._keys[self._pos], self._gt)) {
+            self._pos++;
+          }
+          else if (self._gte && keyLt(self._keys[self._pos], self._gt)) {
+            self._pos++;
+          }
+          else if (!self._gt && keyLt(self._keys[self._pos], self._startkey)) {
+            self._pos++;
+          }
+        }
+      } else {
+        self._pos = self._reverse ? self._keys.length - 1 : 0;
+      }
+
+      if (self._endkey) {
+        self._endIndex = utils.sortedIndexOf(self._keys, self._endkey);
+        if (self._reverse && keyLt(self._keys[self._endIndex], self._endkey)) {
+          self._endIndex++;
+        }
+        else if (!self._reverse && keyGt(self._keys[self._endIndex], self._endkey)) {
+          self._endIndex--;
+        }
+      }
     }
 
     self._fillCache(function () {
@@ -92,7 +143,7 @@ ADIterator.prototype._fillCache = function fillCache(callback) {
     if (this._limit === 0) {
       break;
     }
-    if (this._pos === this._keys.length || this._pos < 0) { // done reading
+    if (this._pos >= this._keys.length || this._pos < 0) { // done reading
       break;
     }
 
@@ -102,14 +153,15 @@ ADIterator.prototype._fillCache = function fillCache(callback) {
       break;
     }
 
-    if (!!this._endkey && (this._reverse ? key < this._endkey : key > this._endkey)) {
+    if (typeof this._endIndex === 'number'
+    && (this._reverse ? this._pos < this._endIndex : this._pos > this._endIndex)) {
       break;
     }
 
-    if ((this._lt  && key >= this._lt) ||
-      (this._lte && key > this._lte) ||
-      (this._gt  && key <= this._gt) ||
-      (this._gte && key < this._gte)) {
+    if ((this._lt && keyGte(key, this._lt))
+    || (this._lte && keyGt(key, this._lte))
+    || (this._gt  && keyLte(key, this._gt))
+    || (this._gte && keyLt(key, this._gte))) {
       break;
     }
 
