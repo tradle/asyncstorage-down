@@ -14,30 +14,6 @@ var ltgt = require('ltgt');
 var nextTick = global.setImmediate || process.nextTick;
 var batchSize = 20
 
-function keyEq(k1, k2) {
-  return (k1 || '').toString('hex') === (k2 || '').toString('hex');
-}
-
-function keyNeq(k1, k2) {
-  return (k1 || '').toString('hex') !== (k2 || '').toString('hex');
-}
-
-function keyGt(k1, k2) {
-  return (k1 || '').toString('hex') > (k2 || '').toString('hex');
-}
-
-function keyGte(k1, k2) {
-  return (k1 || '').toString('hex') >= (k2 || '').toString('hex');
-}
-
-function keyLt(k1, k2) {
-  return (k1 || '').toString('hex') < (k2 || '').toString('hex');
-}
-
-function keyLte(k1, k2) {
-  return (k1 || '').toString('hex') <= (k2 || '').toString('hex');
-}
-
 function ADIterator(db, options) {
 
   AbstractIterator.call(this, db);
@@ -85,13 +61,13 @@ function ADIterator(db, options) {
           if (self._pos === self._keys.length) {
             self._pos--;
           }
-          else if (self._lt && keyGte(self._keys[self._pos], self._lt)) {
+          else if (self._lt && utils.keyGte(self._keys[self._pos], self._lt)) {
             self._pos--;
           }
-          else if (self._lte && keyGt(self._keys[self._pos], self._lte)) {
+          else if (self._lte && utils.keyGt(self._keys[self._pos], self._lte)) {
             self._pos--;
           }
-          else if (!self._lt && keyGt(self._keys[self._pos], self._startkey)) {
+          else if (!self._lt && utils.keyGt(self._keys[self._pos], self._startkey)) {
             self._pos--;
           }
         }
@@ -99,13 +75,13 @@ function ADIterator(db, options) {
           if (self._pos < 0) {
             self._pos = 0;
           }
-          else if (self._gt && keyLte(self._keys[self._pos], self._gt)) {
+          else if (self._gt && utils.keyLte(self._keys[self._pos], self._gt)) {
             self._pos++;
           }
-          else if (self._gte && keyLt(self._keys[self._pos], self._gt)) {
+          else if (self._gte && utils.keyLt(self._keys[self._pos], self._gt)) {
             self._pos++;
           }
-          else if (!self._gt && keyLt(self._keys[self._pos], self._startkey)) {
+          else if (!self._gt && utils.keyLt(self._keys[self._pos], self._startkey)) {
             self._pos++;
           }
         }
@@ -115,10 +91,10 @@ function ADIterator(db, options) {
 
       if (self._endkey) {
         self._endIndex = utils.sortedIndexOf(self._keys, self._endkey);
-        if (self._reverse && keyLt(self._keys[self._endIndex], self._endkey)) {
+        if (self._reverse && utils.keyLt(self._keys[self._endIndex], self._endkey)) {
           self._endIndex++;
         }
-        else if (!self._reverse && keyGt(self._keys[self._endIndex], self._endkey)) {
+        else if (!self._reverse && utils.keyGt(self._keys[self._endIndex], self._endkey)) {
           self._endIndex--;
         }
       }
@@ -158,10 +134,10 @@ ADIterator.prototype._fillCache = function fillCache(callback) {
       break;
     }
 
-    if ((this._lt && keyGte(key, this._lt))
-    || (this._lte && keyGt(key, this._lte))
-    || (this._gt  && keyLte(key, this._gt))
-    || (this._gte && keyLt(key, this._gte))) {
+    if ((this._lt && utils.keyGte(key, this._lt))
+    || (this._lte && utils.keyGt(key, this._lte))
+    || (this._gt  && utils.keyLte(key, this._gt))
+    || (this._gte && utils.keyLt(key, this._gte))) {
       break;
     }
 
