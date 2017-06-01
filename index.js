@@ -8,6 +8,7 @@ var AbstractIterator = require('abstract-leveldown').AbstractIterator;
 var Storage = require('./asyncstorage').Storage;
 var StorageCore = require('./asyncstorage-core');
 var utils = require('./utils');
+var ltgt = require('ltgt');
 
 // see http://stackoverflow.com/a/15349865/680742
 var nextTick = global.setImmediate || process.nextTick;
@@ -24,79 +25,177 @@ function ADIterator(db, options) {
   this._gte     = options.gte;
   this._lt      = options.lt;
   this._lte     = options.lte;
-  this._exclusiveStart = options.exclusiveStart;
+  this._keyAsBuffer = options.keyAsBuffer;
+  this._valueAsBuffer = options.valueAsBuffer;
   this._limit = options.limit;
   this._keysOnly = options.values === false
   this._count = 0;
-  this._cache = []
+  this._cache = [];
+  this._cacheExtinguished = false;
 
   this.onInitCompleteListeners = [];
-}
 
-inherits(ADIterator, AbstractIterator);
-
-ADIterator.prototype._init = function (callback) {
-  nextTick(callback)
-};
-
-ADIterator.prototype._next = function (callback) {
+  this.initStarted = true;
   var self = this;
-  callback = asyncify(callback)
-
-  if (self.initStarted) {
-    if (self.initCompleted) {
-      onInitComplete();
-    } else {
-      self.onInitCompleteListeners.push(onInitComplete);
-    }
-
-    return
-  }
-
-  self.initStarted = true;
-  self._init(function (err) {
+  this.db.container.keys(function (err, keys) {
     if (err) {
-      return callback(err);
+      self.initError = err;
     }
-    self.db.container.keys(function (err, keys) {
-      if (err) {
-        return callback(err);
+
+    self._keys = keys;
+
+    if (keys.length === 0) {
+      self._pos = 0;
+    } else {
+      if (!self._reverse) {
+        self._startkey = ltgt.lowerBound(options)
+        self._endkey = ltgt.upperBound(options)
+      } else {
+        self._startkey = ltgt.upperBound(options)
+        self._endkey = ltgt.lowerBound(options)
       }
 
-      self._keys = keys;
       if (self._startkey) {
-        var index = utils.sortedIndexOf(self._keys, self._startkey);
-        var startkey = (index >= self._keys.length || index < 0)
-          ? undefined
-          : self._keys[index];
-
-        self._pos = index;
+        self._pos = utils.sortedIndexOf(self._keys, self._startkey);
         if (self._reverse) {
-          if (self._exclusiveStart || startkey !== self._startkey) {
+          if (self._pos === self._keys.length) {
             self._pos--;
           }
-        } else if (self._exclusiveStart && startkey === self._startkey) {
-          self._pos++;
+          else if (self._lt && utils.keyGte(self._keys[self._pos], self._lt)) {
+            self._pos--;
+          }
+          else if (self._lte && utils.keyGt(self._keys[self._pos], self._lte)) {
+            self._pos--;
+          }
+          else if (!self._lt && utils.keyGt(self._keys[self._pos], self._startkey)) {
+            self._pos--;
+          }
+        }
+        else {
+          if (self._pos < 0) {
+            self._pos = 0;
+          }
+          else if (self._gt && utils.keyLte(self._keys[self._pos], self._gt)) {
+            self._pos++;
+          }
+          else if (self._gte && utils.keyLt(self._keys[self._pos], self._gt)) {
+            self._pos++;
+          }
+          else if (!self._gt && utils.keyLt(self._keys[self._pos], self._startkey)) {
+            self._pos++;
+          }
         }
       } else {
         self._pos = self._reverse ? self._keys.length - 1 : 0;
       }
 
-      onInitComplete();
+      if (self._endkey) {
+        self._endIndex = utils.sortedIndexOf(self._keys, self._endkey);
+        if (self._reverse && utils.keyLt(self._keys[self._endIndex], self._endkey)) {
+          self._endIndex++;
+        }
+        else if (!self._reverse && utils.keyGt(self._keys[self._endIndex], self._endkey)) {
+          self._endIndex--;
+        }
+      }
+    }
 
+    self._fillCache(function () {
       self.initCompleted = true;
+
       var i = -1;
       while (++i < self.onInitCompleteListeners.length) {
         nextTick(self.onInitCompleteListeners[i]);
       }
-    });
+    })
   });
+}
 
-  function onInitComplete() {
+inherits(ADIterator, AbstractIterator);
+
+ADIterator.prototype._fillCache = function fillCache(callback) {
+  var batch = []
+  for (var i = 0; i < batchSize; i++) {
+    if (this._limit === 0) {
+      break;
+    }
+    if (this._pos >= this._keys.length || this._pos < 0) { // done reading
+      break;
+    }
+
+    var key = this._keys[this._pos];
+
+    if (!!this._limit && this._limit > 0 && this._count++ >= this._limit) {
+      break;
+    }
+
+    if (typeof this._endIndex === 'number'
+    && (this._reverse ? this._pos < this._endIndex : this._pos > this._endIndex)) {
+      break;
+    }
+
+    if ((this._lt && utils.keyGte(key, this._lt))
+    || (this._lte && utils.keyGt(key, this._lte))
+    || (this._gt  && utils.keyLte(key, this._gt))
+    || (this._gte && utils.keyLt(key, this._gte))) {
+      break;
+    }
+
+    this._pos += this._reverse ? -1 : 1;
+    batch.push(key)
+  }
+
+  if (!batch.length) {
+    this._cache = []
+    this._cacheExtinguished = true;
+    return callback()
+  }
+
+  if (this._keysOnly) {
+    this._cache = batch
+    return callback()
+  }
+
+  var self = this;
+  this.db.container.getItems(batch, function (errs, values) {
+    self._cache = values.map(function (v, idx) {
+      return {
+        key: batch[idx],
+        value: v,
+        error: errs[idx]
+      }
+    })
+    callback()
+  });
+}
+
+ADIterator.prototype._next = function (callback) {
+  var self = this;
+  callback = asyncify(callback)
+
+  if (self.initError) {
+    callback(self.initError);
+    return;
+  }
+
+  if (self.initStarted) {
+    if (self.initCompleted) {
+      getFromCache();
+    } else {
+      self.onInitCompleteListeners.push(getFromCache);
+    }
+    return;
+  }
+
+  function getFromCache() {
+    if (self._cacheExtinguished) {
+      return callback()
+    }
+
     if (self._cache.length) {
       var cached = self._cache.shift()
       if (self._keysOnly) {
-        return callback(null, cached)
+        return callback(null, self._keyAsBuffer ? new Buffer(cached) : cached)
       }
 
       if (cached.error) {
@@ -109,58 +208,13 @@ ADIterator.prototype._next = function (callback) {
         }
       }
 
-      callback(null, cached.key, cached.value)
+      callback(null,
+        self._keyAsBuffer ? new Buffer(cached.key) : cached.key,
+        self._valueAsBuffer ? new Buffer(cached.value) : cached.value)
       return
+    } else {
+      self._fillCache(getFromCache)
     }
-
-    var batch = []
-    for (var i = 0; i < batchSize; i++) {
-      if (self._pos === self._keys.length || self._pos < 0) { // done reading
-        break;
-      }
-
-      var key = self._keys[self._pos];
-
-      if (!!self._endkey && (self._reverse ? key < self._endkey : key > self._endkey)) {
-        break;
-      }
-
-      if (!!self._limit && self._limit > 0 && self._count++ >= self._limit) {
-        break;
-      }
-
-      if ((self._lt  && key >= self._lt) ||
-        (self._lte && key > self._lte) ||
-        (self._gt  && key <= self._gt) ||
-        (self._gte && key < self._gte)) {
-        break;
-      }
-
-      self._pos += self._reverse ? -1 : 1;
-      batch.push(key)
-    }
-
-    if (!batch.length) {
-      self._cache = []
-      return callback()
-    }
-
-    if (self._keysOnly) {
-      self._cache = batch
-      return onInitComplete()
-    }
-
-    self.db.container.getItems(batch, function (errs, values) {
-      self._cache = values.map(function (v, idx) {
-        return {
-          key: batch[idx],
-          value: v,
-          error: errs[idx]
-        }
-      })
-
-      onInitComplete()
-    });
   }
 };
 
@@ -185,11 +239,15 @@ AD.prototype._multiPut = function (pairs, options, callback) {
     err = checkKeyValue(key, 'key');
     if (err) return
 
-    err = checkKeyValue(value, 'value');
+    if (checkKeyValue(value, 'value')) {
+      normalized.push([key, ''])
+      return true
+    }
 
-    if (err) return
-
-    if (typeof value === 'object' && !Buffer.isBuffer(value) && value.buffer === undefined) {
+    if (value !== null
+    && typeof value === 'object'
+    && !Buffer.isBuffer(value)
+    && value.buffer === undefined) {
       var obj = {};
       obj.storetype = 'json';
       obj.data = value;
@@ -223,7 +281,6 @@ AD.prototype._get = function (key, options, callback) {
   }
 
   this.container.getItem(key, function (err, value) {
-
     if (err) {
       return callback(err);
     }
@@ -231,7 +288,6 @@ AD.prototype._get = function (key, options, callback) {
     if (options.asBuffer !== false && !Buffer.isBuffer(value)) {
       value = new Buffer(value);
     }
-
 
     if (options.asBuffer === false) {
       if (value.indexOf('{"storetype":"json","data"') > -1) {
@@ -244,25 +300,30 @@ AD.prototype._get = function (key, options, callback) {
 };
 
 AD.prototype._multiDel = function (keys, options, callback) {
-  var normalized = []
-  var err
-  keys.every((key) => {
-    err = checkKeyValue(key, 'key');
-    if (err) return
+  // Next tick so that any ADIterator has had enough time to make a snapshot.
+  // This is for sure a crappy solution, but neither iterator snapshot nor
+  // delete seem to be timely/urgent features. PRs welcomed :D
+  nextTick(() => {
+    var normalized = []
+    var err
+    keys.every((key) => {
+      err = checkKeyValue(key, 'key');
+      if (err) return
 
-    if (!Buffer.isBuffer(key)) {
-      key = String(key);
+      if (!Buffer.isBuffer(key)) {
+        key = String(key);
+      }
+
+      normalized.push(key)
+      return true
+    })
+
+    if (err) {
+      nextTick(() => callback(err))
+    } else {
+      this.container.removeItems(keys, callback)
     }
-
-    normalized.push(key)
-    return true
   })
-
-  if (err) {
-    nextTick(() => callback(err))
-  } else {
-    this.container.removeItems(keys, callback)
-  }
 }
 
 AD.prototype._del = function (key, options, callback) {
@@ -297,9 +358,8 @@ AD.prototype._batch = function (array, options, callback) {
         toDel.push(task.key)
       } else if (task.type === 'put') {
         value = Buffer.isBuffer(task.value) ? task.value : String(task.value);
-        err = checkKeyValue(value, 'value');
-        if (err) {
-          return callback(err);
+        if (checkKeyValue(value, 'value')) {
+          toPut.push([key, ''])
         } else {
           toPut.push([key, value])
         }
@@ -347,25 +407,17 @@ function checkKeyValue(obj, type) {
   if (obj === null || obj === undefined) {
     return new Error(type + ' cannot be `null` or `undefined`');
   }
-  if (obj === null || obj === undefined) {
-    return new Error(type + ' cannot be `null` or `undefined`');
+  if (obj instanceof Boolean) {
+    return new Error(type + ' cannot be a boolean');
   }
-
-  if (type === 'key') {
-
-    if (obj instanceof Boolean) {
-      return new Error(type + ' cannot be `null` or `undefined`');
-    }
-    if (obj === '') {
-      return new Error(type + ' cannot be empty');
-    }
+  if (obj === '') {
+    return new Error(type + ' cannot be an empty string');
   }
   if (obj.toString().indexOf('[object ArrayBuffer]') === 0) {
     if (obj.byteLength === 0 || obj.byteLength === undefined) {
       return new Error(type + ' cannot be an empty Buffer');
     }
   }
-
   if (Buffer.isBuffer(obj)) {
     if (obj.length === 0) {
       return new Error(type + ' cannot be an empty Buffer');

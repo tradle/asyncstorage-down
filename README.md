@@ -14,13 +14,13 @@ This project is intended for use with the [level eco-system](https://github.com/
 npm install asyncstorage-down
 ```
 
-## Example 
+## Example
 
-At the command prompt in your chosen directory : 
+At the command prompt in your chosen directory :
 
 ```
 npm install asyncstorage-down
-npm install levelup 
+npm install levelup
 ```
 
 Create a file called index.js and enter the following:
@@ -52,10 +52,6 @@ db.readStream()
    });
 ```
 
-## Tests
-
-_TODO: tests pass, but still need to setup env for automatic testing_
-
 ## Note
 
 React Native's packager currently doesn't automatically inject browserified core node modules, like util, crypto, process, buffer, etc. Currently this module depends on several shims to mitigate the sadness. The alternative is to use [react-native-webpack-server](https://www.npmjs.org/package/react-native-webpack-server), which allows you to use browserified node core modules out of the box. Once React Native's packager allows the same functionality, this module's dependencies can be heavily pruned.
@@ -67,6 +63,8 @@ Tradle, Inc. https://github.com/tradle
 Mark Vayngrib https://github.com/mvayngrib
 
 Ellen Katsnelson https://github.com/pgmemk
+
+Andre Staltz https://github.com/staltz
 
 ## localstorage-down Contributors
 

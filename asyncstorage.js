@@ -41,7 +41,7 @@ Storage.prototype.setItems = function (pairs, callback) {
     for (var i = 0 ; i < pairs.length; i++) {
       var key = pairs[i][0]
       var idx = utils.sortedIndexOf(self._keys, key);
-      if (self._keys[idx] !== key) {
+      if (utils.keyNeq(self._keys[idx], key)) {
         self._keys.splice(idx, 0, key);
       }
     }
@@ -74,7 +74,7 @@ Storage.prototype.getItems = function (keys, callback) {
     for (var i = 0; i < encoded.length; i++) {
       var key = encoded[i]
       var idx = utils.sortedIndexOf(myKeys, key)
-      if (myKeys[idx] !== key) {
+      if (utils.keyNeq(myKeys[idx], key)) {
         allErrs[i] = new Error('NotFound')
       } else {
         allErrs[i] = undefined
@@ -126,7 +126,7 @@ Storage.prototype.removeItems = function (keys, callback) {
   self.sequentialize(callback, function (callback) {
     keys.forEach((key) => {
       var idx = utils.sortedIndexOf(self._keys, key);
-      if (self._keys[idx] === key) {
+      if (utils.keyEq(self._keys[idx], key)) {
         self._keys.splice(idx, 1);
       }
     })
