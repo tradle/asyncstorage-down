@@ -91,7 +91,9 @@ AsyncStorageCore.destroy = function (dbname, callback) {
       return key.slice(0, prefixLen) === prefix;
     })
 
-    AsyncStorage.multiRemove(keys, callback);
+    if (keys.length) {
+      AsyncStorage.multiRemove(keys, callback);
+    }
   })
 };
 
