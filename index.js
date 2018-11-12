@@ -276,8 +276,6 @@ AD.prototype._batch = function (array, options, callback) {
     var key;
     var value;
 
-    var numDone = 0;
-    var overallErr;
     if (!Array.isArray(array) || !array.length) return callback()
 
     var toPut = []
@@ -313,7 +311,7 @@ AD.prototype._batch = function (array, options, callback) {
     }
 
     if (toPut.length) {
-      toPut = toPut.filter(([key, val]) => !(key in deleted))
+      toPut = toPut.filter(([key]) => !(key in deleted))
     }
 
     if (toPut.length) {

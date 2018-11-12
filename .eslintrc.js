@@ -12,7 +12,7 @@ module.exports = {
     },
     "rules": {
         "accessor-pairs": "error",
-        "array-bracket-newline": "error",
+        "array-bracket-newline": "warn",
         "array-bracket-spacing": [
             "error",
             "never"
@@ -40,7 +40,7 @@ module.exports = {
         "camelcase": "error",
         "capitalized-comments": "off",
         "class-methods-use-this": "error",
-        "comma-dangle": "error",
+        "comma-dangle": "warn",
         "comma-spacing": [
             "error",
             {
@@ -141,7 +141,7 @@ module.exports = {
         "no-div-regex": "error",
         "no-duplicate-imports": "error",
         "no-else-return": "off",
-        "no-empty-function": "error",
+        "no-empty-function": "warn",
         "no-eq-null": "error",
         "no-eval": "error",
         "no-extend-native": "error",
@@ -235,10 +235,7 @@ module.exports = {
             "error",
             "always"
         ],
-        "operator-linebreak": [
-            "error",
-            "before"
-        ],
+        "operator-linebreak": "warn",
         "padded-blocks": "off",
         "padding-line-between-statements": "error",
         "prefer-arrow-callback": "off",

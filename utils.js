@@ -39,9 +39,7 @@ function encodeOne (val) {
 function decodeOne (str) {
   if (str.slice(0, bufferPrefix.length) === bufferPrefix) {
     return d64.decode(str.slice(bufferPrefix.length))
-  } else {
-    return str.slice(nonBufferPrefix.length)
   }
 
-  return str
+  return str.slice(nonBufferPrefix.length)
 }

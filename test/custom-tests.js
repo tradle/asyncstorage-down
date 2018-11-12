@@ -30,7 +30,7 @@ module.exports.all = function (leveldown, tape, testCommon) {
             leveldown.destroy('destroy-test', function (err) {
               t.notOk(err, 'no error');
               var db3 = levelup('destroy-test', {db: leveldown});
-              db3.get('key', function (err, value) {
+              db3.get('key', function (err) {
                 t.ok(err, 'key is not there');
                 db2.get('key2', function (err, value) {
                   t.notOk(err, 'no error');
@@ -82,6 +82,7 @@ module.exports.all = function (leveldown, tape, testCommon) {
     db.put('c', 'C', noop);
     iterator = db.iterator({ keyAsBuffer: false, valueAsBuffer: false, start: 'a' });
     iterator.next(function (err, key, value) {
+      t.error(err);
       t.equal(key, 'a');
       t.equal(value, 'A');
       db.del('b', function (err) {
@@ -109,6 +110,7 @@ module.exports.all = function (leveldown, tape, testCommon) {
     db.put('e', 'E', noop);
     iterator = db.iterator({ keyAsBuffer: false, valueAsBuffer: false, start: 'c' });
     iterator.next(function (err, key, value) {
+      t.error(err);
       t.equal(key, 'c');
       t.equal(value, 'C');
       db.del('c', function (err) {
@@ -143,6 +145,7 @@ module.exports.all = function (leveldown, tape, testCommon) {
     db.put('c', 'C', noop);
     iterator = db.iterator({ keyAsBuffer: false, valueAsBuffer: false, start: 'a' });
     iterator.next(function (err, key, value) {
+      t.error(err);
       t.equal(key, 'a');
       t.equal(value, 'A');
       db.batch([{
@@ -182,7 +185,8 @@ module.exports.all = function (leveldown, tape, testCommon) {
         t.notOk(err, 'no error');
         t.equals(key, '2');
         t.equal(value, '2');
-        iterator.next(function (err, key, value) {
+        iterator.next(function (err, key) {
+          t.error(err);
           t.notOk(key, 'should not actually have a key');
           t.end();
         });
@@ -199,17 +203,17 @@ module.exports.all = function (leveldown, tape, testCommon) {
     var db = levelup('ooga', { db: leveldown });
     var batch = [
       {
-        key:'a',
+        key: 'a',
         value: '1',
         type: 'put'
       },
       {
-        key:'b',
+        key: 'b',
         value: '2',
         type: 'put'
       },
       {
-        key:'c',
+        key: 'c',
         value: '3',
         type: 'put'
       },
