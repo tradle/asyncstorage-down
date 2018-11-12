@@ -30,7 +30,9 @@ AsyncStorageCore.prototype.getKeys = function (callback) {
   getAllKeys((err, allKeys) => {
     if (err) return callback(err);
 
-    if (!prefixSupported) {
+    if (prefixSupported) {
+      keys = allKeys;
+    } else {
       keys = unprefix(allKeys, prefix);
     }
 
