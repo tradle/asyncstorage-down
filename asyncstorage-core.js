@@ -1,36 +1,38 @@
 'use strict';
 
-var AsyncStorage = require('react-native').AsyncStorage;
+const { AsyncStorage } = require('react-native');
 
 /*
  * Adapted from https://github.com/No9/localstorage-down
  */
 
-function createPrefix(dbname) {
-  return dbname.replace(/!/g, '!!') + '!'; // escape bangs in dbname;
-}
-
-function prepKey(key, core) {
-  return core._prefix + key;
-}
-
 function AsyncStorageCore(dbname) {
   this._prefix = createPrefix(dbname);
+}
+
+const createPrefix = (dbname) => dbname.replace(/!/g, '!!') + '!'; // escape bangs in dbname;
+const prepKey = (key, core) => core._prefix + key;
+const unprefix = (strings, prefix) => {
+  const prefixLen = prefix.length
+  return strings
+    .filter(str => str.slice(0, prefixLen) === prefix)
+    .map(str => str.slice(prefixLen));
 }
 
 AsyncStorageCore.prototype.getKeys = function (callback) {
   var keys = [];
   var prefix = this._prefix;
-  var prefixLen = prefix.length;
+  var prefixSupported = !!AsyncStorage.getAllKeysWithPrefix;
+  var getAllKeys = prefixSupported
+    ? AsyncStorage.getAllKeysWithPrefix.bind(AsyncStorage, prefix)
+    : AsyncStorage.getAllKeys.bind(AsyncStorage);
 
-  AsyncStorage.getAllKeys(function(err, allKeys) {
+  getAllKeys((err, allKeys) => {
     if (err) return callback(err);
 
-    allKeys.forEach(function(fullKey) {
-      if (fullKey.slice(0, prefixLen) === prefix) {
-        keys.push(fullKey.slice(prefixLen));
-      }
-    })
+    if (!prefixSupported) {
+      keys = unprefix(allKeys, prefix);
+    }
 
     keys.sort();
     callback(null, keys);
