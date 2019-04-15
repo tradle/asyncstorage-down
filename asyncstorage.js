@@ -5,8 +5,8 @@ var utils = require('./utils');
 var StorageCore = require('./asyncstorage-core');
 var TaskQueue = require('./taskqueue');
 
-function Storage(dbname) {
-  this._store = new StorageCore(dbname);
+function Storage(dbname, opts) {
+  this._store = new StorageCore(dbname, opts);
   this._queue = new TaskQueue();
 }
 

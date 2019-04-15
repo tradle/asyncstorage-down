@@ -233,4 +233,26 @@ module.exports.all = function (leveldown, tape, testCommon) {
         });
     });
   });
+
+  tape('destroy() with custom AsyncStorage implementation', function(t) {
+    t.plan(2);
+    const keys = ['abc!1', 'abc!2'];
+    leveldown.destroy(
+      {
+        location: 'abc',
+        AsyncStorage: {
+          getAllKeys: (callback) => {
+            process.nextTick(() => callback(null, keys));
+          },
+          multiRemove: (actual, callback) => {
+            t.same(actual, keys);
+            process.nextTick(callback);
+          },
+        },
+      },
+      (err) => {
+        t.error(err);
+      }
+    );
+  });
 };

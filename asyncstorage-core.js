@@ -1,13 +1,14 @@
 'use strict';
 
-const { AsyncStorage } = require('react-native');
+const DEFAULT_OPTS = require('./default-opts');
 
 /*
  * Adapted from https://github.com/No9/localstorage-down
  */
 
-function AsyncStorageCore(dbname) {
+function AsyncStorageCore(dbname, opts = DEFAULT_OPTS) {
   this._prefix = createPrefix(dbname);
+  this._asyncStorageImpl = opts.AsyncStorage
 }
 
 const createPrefix = (dbname) => dbname.replace(/!/g, '!!') + '!'; // escape bangs in dbname;
@@ -22,10 +23,10 @@ const unprefix = (strings, prefix) => {
 AsyncStorageCore.prototype.getKeys = function (callback) {
   var keys = [];
   var prefix = this._prefix;
-  var prefixSupported = !!AsyncStorage.getAllKeysWithPrefix;
+  var prefixSupported = !!this._asyncStorageImpl.getAllKeysWithPrefix;
   var getAllKeys = prefixSupported
-    ? AsyncStorage.getAllKeysWithPrefix.bind(AsyncStorage, prefix)
-    : AsyncStorage.getAllKeys.bind(AsyncStorage);
+    ? this._asyncStorageImpl.getAllKeysWithPrefix.bind(this._asyncStorageImpl, prefix)
+    : this._asyncStorageImpl.getAllKeys.bind(this._asyncStorageImpl);
 
   getAllKeys((err, allKeys) => {
     if (err) return callback(err);
@@ -43,7 +44,7 @@ AsyncStorageCore.prototype.getKeys = function (callback) {
 
 AsyncStorageCore.prototype.put = function (key, value, callback) {
   key = prepKey(key, this);
-  AsyncStorage.setItem(key, value, callback);
+  this._asyncStorageImpl.setItem(key, value, callback);
 };
 
 AsyncStorageCore.prototype.multiPut = function (pairs, callback) {
@@ -52,12 +53,12 @@ AsyncStorageCore.prototype.multiPut = function (pairs, callback) {
     pair[0] = prepKey(pair[0], self);
   })
 
-  AsyncStorage.multiSet(pairs, callback);
+  this._asyncStorageImpl.multiSet(pairs, callback);
 };
 
 AsyncStorageCore.prototype.get = function (key, callback) {
   key = prepKey(key, this);
-  AsyncStorage.getItem(key, callback);
+  this._asyncStorageImpl.getItem(key, callback);
 };
 
 AsyncStorageCore.prototype.multiGet = function (keys, callback) {
@@ -66,7 +67,7 @@ AsyncStorageCore.prototype.multiGet = function (keys, callback) {
     return prepKey(key, self)
   })
 
-  AsyncStorage.multiGet(keys)
+  this._asyncStorageImpl.multiGet(keys)
     .then(function (pairs) {
       callback(null, pairs.map(function (pair) {
         return pair[1]
@@ -77,16 +78,22 @@ AsyncStorageCore.prototype.multiGet = function (keys, callback) {
 
 AsyncStorageCore.prototype.remove = function (key, callback) {
   key = prepKey(key, this);
-  AsyncStorage.removeItem(key, callback);
+  this._asyncStorageImpl.removeItem(key, callback);
 };
 
 AsyncStorageCore.prototype.multiRemove = function (keys, callback) {
   keys = keys.map((key) => prepKey(key, this))
-  AsyncStorage.multiRemove(keys, callback);
+  this._asyncStorageImpl.multiRemove(keys, callback);
 };
 
-AsyncStorageCore.destroy = function (dbname, callback) {
-  var prefix = createPrefix(dbname);
+AsyncStorageCore.destroy = function (opts, callback) {
+  if (typeof opts === 'string') {
+    opts = { location: opts }
+  }
+
+  var { location } = opts
+  var AsyncStorage = opts.AsyncStorage || DEFAULT_OPTS.AsyncStorage
+  var prefix = createPrefix(location);
   var prefixLen = prefix.length;
   AsyncStorage.getAllKeys(function(err, keys) {
     if (err) return callback(err);

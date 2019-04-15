@@ -218,12 +218,12 @@ ADIterator.prototype._next = function (callback) {
   }
 };
 
-function AD(location) {
+function AD(location, opts) {
   if (!(this instanceof AD)) {
-    return new AD(location);
+    return new AD(location, opts);
   }
   AbstractLevelDOWN.call(this, location);
-  this.container = new Storage(location);
+  this.container = new Storage(location, opts);
 }
 
 inherits(AD, AbstractLevelDOWN);
