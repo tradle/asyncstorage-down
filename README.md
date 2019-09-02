@@ -26,14 +26,14 @@ npm install levelup
 Create a file called index.js and enter the following:
 
 ```js
-var asyncstorage = require('asyncstorage-down');
-var levelup = require('levelup');
-var db = levelup('/does/not/matter', { db: asyncstorage });
-// to pass in a different AsyncStorage implementation:
-// var SomeOtherImplementation = require('@react-native-community/async-storage).default
-// var db = levelup('/does/not/matter', {
-//   db: location => asyncstorage(location, { AsyncStorage: SomeOtherImplementation })
-// })
+import asyncstorageDown from 'asyncstorage-down'
+import levelup from 'levelup'
+// or whichever implementation you're using
+import AsyncStorage from '@react-native-community/async-storage'
+
+const db = levelup('/does/not/matter', {
+  db: location => asyncstorageDown(location, { AsyncStorage })
+})
 
 db.put('name', 'Yuri Irsenovich Kim');
 db.put('dob', '16 February 1941');
