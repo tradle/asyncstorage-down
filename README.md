@@ -63,7 +63,7 @@ React Native's packager currently doesn't automatically inject browserified core
 
 ## Alternatives
 
-If you're willing to add native modules to your project, you may also be interested in [`react-native-leveldown`](https://github.com/andymatuschak/react-native-leveldown), which implements native bindings to the original C++ implementation of LevelDB (currently only for iOS/Mac).
+If you're willing to add native modules to your project, you may also be interested in [`react-native-leveldown`](https://github.com/andymatuschak/react-native-leveldown), which implements native bindings to the original C++ implementation of LevelDB.
 
 ## Related Projects
 
