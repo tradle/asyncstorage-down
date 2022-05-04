@@ -29,7 +29,7 @@ Create a file called index.js and enter the following:
 import asyncstorageDown from 'asyncstorage-down'
 import levelup from 'levelup'
 // or whichever implementation you're using
-import AsyncStorage from '@react-native-community/async-storage'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const db = levelup('/does/not/matter', {
   db: location => asyncstorageDown(location, { AsyncStorage })
